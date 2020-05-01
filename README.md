@@ -18,7 +18,7 @@ It can be added manually:
 - cd ./deps/
 - aws lambda publish-layer-version --layer-name requests \
       --description "requests package" \
-      --zip-file fileb://../requests.zip \
+      --zip-file fileb://requests.zip \
       --compatible-runtimes python3.6
 
 
