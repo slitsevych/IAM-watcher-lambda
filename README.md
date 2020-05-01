@@ -1,37 +1,28 @@
-# IAM-watcher-lambda
-Watch cloudtrail for IAM events, post them to slack.
+Re-factored script: 
 
-Note the slack configuration at the top of lambda.py
+- compatible with Python3 runtimes
+- parsing S3 logs on SNS topic trigger
+- sends richly formatted Slack notification 
+
+Watch Cloudtrail for IAM events and post them to Slack.
+
+Note the slack configuration at the top of lambda.py: it is advised to set environment variables in the Lambda directly
 ```
+SNS_TOPIC = "arn:aws:sns...." # change me
 SLACK_HOOK = "https://hooks.slack.com/services/<asdf>/<asdf>/<asdf>"  # change me
 SLACK_CHANNEL = "general"  # change me
-SLACK_USER = "trails"      # change me
-SLACK_ICON = ":shield:"
 ```
+Script uses "requests" library which is not available in Lambda by default. 
+It can be added manually: 
+- git clone "repo" && cd "repo"
+- cd ./deps/python
+- aws lambda publish-layer-version --layer-name requests \
+      --description "requests package" \
+      --zip-file fileb://../requests.zip \
+      --compatible-runtimes python3.6
 
-You'll also need to attach an IAM roles for your lambda function to give it access to the log files.
 ```
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Resource": [
-                "arn:aws-us-gov:s3:::<your cloudtrail bucket>"
-            ],
-            "Action": [
-                "s3:ListBucket"
-            ]
-        },
-        {
-            "Action": [
-                "s3:GetObject"
-            ],
-            "Resource": "arn:aws-us-gov:s3:::<your cloudtrail bucket>/*",
-            "Effect": "Allow"
-        }
-    ]
-}
+You'll need to configure SNS topic to allow Event Notifications from an S3 Bucket and IAM Role for the Lambda functions. More details on this matter in the following article:
 ```
-
-Good luck!
+https://aws.amazon.com/blogs/compute/fanout-s3-event-notifications-to-multiple-endpoints/ 
+```
