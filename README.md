@@ -28,4 +28,4 @@ https://aws.amazon.com/blogs/compute/fanout-s3-event-notifications-to-multiple-e
 Use test-sns-notification-s3-event.json to trigger function in test mode:
 - change TopicArn to match your SNS topic
 - under "Message" look for {\"key\":\"CloudTrail/AWSLogs/1234567890/CloudTrail/us-east-1/1970/01/01/1234567890_CloudTrail_us-east-1_197001019T1005Z_2Iys7xENXi4MtQoU.json.gz\" and change to correct key containing IAM change (make some changes beforehand to create such file)
-- "1234567890" is dummy AWS account ID, change with correct ID.s
+- "1234567890" is dummy AWS account ID, change with correct ID.
