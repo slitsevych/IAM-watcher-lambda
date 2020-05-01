@@ -21,8 +21,6 @@ It can be added manually:
       --zip-file fileb://../requests.zip \
       --compatible-runtimes python3.6
 
-```
+
 You'll need to configure SNS topic to allow Event Notifications from an S3 Bucket and IAM Role for the Lambda functions. More details on this matter in the following article:
-```
 https://aws.amazon.com/blogs/compute/fanout-s3-event-notifications-to-multiple-endpoints/ 
-```
