@@ -15,7 +15,7 @@ SLACK_CHANNEL = "general"  # change me
 Script uses "requests" library which is not available in Lambda by default. 
 It can be added manually: 
 - git clone "repo" && cd "repo"
-- cd ./deps/python
+- cd ./deps/
 - aws lambda publish-layer-version --layer-name requests \
       --description "requests package" \
       --zip-file fileb://../requests.zip \
