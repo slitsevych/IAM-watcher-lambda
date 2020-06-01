@@ -13,7 +13,7 @@
     "Resource": "*",
     "Condition": {
         "StringEquals": {
-            "kms:CallerAccount": "123455667",
+            "kms:CallerAccount": "123456789",
             "kms:ViaService": "lambda.us-east-1.amazonaws.com"
         }
     }
