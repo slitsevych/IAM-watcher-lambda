@@ -3,8 +3,10 @@ Re-factored script:
 - compatible with Python3 runtimes
 - parsing S3 logs on SNS topic trigger
 - sends richly formatted Slack notification 
+- uses regex filtering of IAM events
 
 Watch Cloudtrail for IAM events and post them to Slack.
+![alt text](https://i.imgur.com/be0gesw.jpg)
 
 Note the slack configuration at the top of lambda.py: it is advised to set environment variables in the Lambda directly
 ```
