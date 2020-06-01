@@ -1,0 +1,20 @@
+{
+    "Sid": "Allow lambda access key",
+    "Effect": "Allow",
+    "Principal": {
+        "AWS": "*"
+    },
+    "Action": [
+        "kms:Decrypt",
+        "kms:Encrypt",
+        "kms:Get*",
+        "kms:List*"
+    ],
+    "Resource": "*",
+    "Condition": {
+        "StringEquals": {
+            "kms:CallerAccount": "123455667",
+            "kms:ViaService": "lambda.us-east-1.amazonaws.com"
+        }
+    }
+},

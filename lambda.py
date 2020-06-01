@@ -2,7 +2,9 @@ from __future__ import print_function
 import urllib.request as urllib
 import urllib.parse
 import os
+import re
 import json
+import yaml
 import boto3
 import requests
 from io import BytesIO
@@ -11,140 +13,30 @@ from gzip import GzipFile
 print('Loading function')
 
 s3 = boto3.client('s3')
-
 webhook_url = os.environ['SLACK_HOOK']
 slack_channel = os.environ['SLACK_CHANNEL']
 
 ACCEPT = ["iam.amazonaws.com"]
-WATCHLIST_INFO = [
-    "DeactivateMFADevice",
-    "DeleteAccessKey",
-    "DeleteAccountAlias",
-    "DeleteAccountPasswordPolicy",
-    "DeleteGroup",
-    "DeleteGroupPolicy",
-    "DeleteInstanceProfile",
-    "DeleteLoginProfile",
-    "DeleteOpenIDConnectProvider",
-    "DeletePolicy",
-    "DeletePolicyVersion",
-    "DeleteRole",
-    "DeleteRolePolicy",
-    "DeleteSAMLProvider",
-    "DeleteServerCertificate",
-    "DeleteServiceSpecificCredential",
-    "DeleteSigningCertificate",
-    "DeleteSSHPublicKey",
-    "DeleteUser",
-    "DeleteUserPolicy",
-    "DeleteVirtualMFADevice",
-    "DetachGroupPolicy",
-    "DetachRolePolicy",
-    "DetachUserPolicy",
-    "RemoveClientIDFromOpenIDConnectProvider",
-    "RemoveRoleFromInstanceProfile",
-    "RemoveUserFromGroup"
-]
-WATCHLIST_WARN = [
-    "AddUserToGroup",
-    "AttachGroupPolicy",
-    "AttachRolePolicy",
-    "AttachUserPolicy",
-    "ChangePassword",
-    "CreateAccessKey",
-    "CreateAccountAlias",
-    "CreateGroup",
-    "CreateInstanceProfile",
-    "CreateLoginProfile",
-    "CreateOpenIDConnectProvider",
-    "CreatePolicy",
-    "CreatePolicyVersion",
-    "CreateRole",
-    "CreateSAMLProvider",
-    "CreateServiceLinkedRole",
-    "CreateServiceSpecificCredential",
-    "CreateUser",
-    "CreateVirtualMFADevice",
-    "PutGroupPolicy",
-    "PutRolePolicy",
-    "PutUserPolicy",
-    "UpdateAccessKey",
-    "UpdateAccountPasswordPolicy",
-    "UpdateAssumeRolePolicy",
-    "UpdateGroup",
-    "UpdateLoginProfile",
-    "UpdateOpenIDConnectProviderThumbprint",
-    "UpdateRoleDescription",
-    "UpdateSAMLProvider",
-    "UpdateServerCertificate",
-    "UpdateServiceSpecificCredential",
-    "UpdateSigningCertificate",
-    "UpdateSSHPublicKey",
-    "UpdateUser",
-    "UploadServerCertificate",
-    "UploadSigningCertificate",
-    "UploadSSHPublicKey"
-]
-WATCHLIST_IGNORE = [
-    "AddClientIDToOpenIDConnectProvider",
-    "AddRoleToInstanceProfile",
-    "EnableMFADevice",
-    "GenerateCredentialReport",
-    "GetAccessKeyLastUsed",
-    "GetAccountAuthorizationDetails",
-    "GetAccountPasswordPolicy",
-    "GetAccountSummary",
-    "GetContextKeysForCustomPolicy",
-    "GetContextKeysForPrincipalPolicy",
-    "GetCredentialReport",
-    "GetGroup",
-    "GetGroupPolicy",
-    "GetInstanceProfile",
-    "GetLoginProfile",
-    "GetOpenIDConnectProvider",
-    "GetPolicy",
-    "GetPolicyVersion",
-    "GetRole",
-    "GetRolePolicy",
-    "GetSAMLProvider",
-    "GetServerCertificate",
-    "GetSSHPublicKey",
-    "GetUser",
-    "GetUserPolicy",
-    "ListAccessKeys",
-    "ListAccountAliases",
-    "ListAttachedGroupPolicies",
-    "ListAttachedRolePolicies",
-    "ListAttachedUserPolicies",
-    "ListEntitiesForPolicy",
-    "ListGroupPolicies",
-    "ListGroups",
-    "ListGroupsForUser",
-    "ListInstanceProfiles",
-    "ListInstanceProfilesForRole",
-    "ListMFADevices",
-    "ListOpenIDConnectProviders",
-    "ListPolicies",
-    "ListPolicyVersions",
-    "ListRolePolicies",
-    "ListRoles",
-    "ListSAMLProviders",
-    "ListServerCertificates",
-    "ListServiceSpecificCredentials",
-    "ListSigningCertificates",
-    "ListSSHPublicKeys",
-    "ListUserPolicies",
-    "ListUsers",
-    "ListVirtualMFADevices",
-    "ResetServiceSpecificCredential",
-    "ResyncMFADevice",
-    "SetDefaultPolicyVersion",
-    "SimulateCustomPolicy",
-    "SimulatePrincipalPolicy"
-]
 
-WATCHLIST = WATCHLIST_INFO + WATCHLIST_WARN
+MATCH = (
+    "^Add",
+    "^Remove",
+    "^Set",
+    "^Delete",
+    "^Deactivate",
+    "^Detach",
+    "^Upload",
+    "^Update",
+    "^Put",
+    "^Create",
+    "^Attach",
+    "^Change"
+    )
 
+IGNORE = (
+    "^List",
+    "^Get",
+    )
 
 def lambda_handler(event, context):
     message = json.loads(event['Records'][0]['Sns']['Message'])
@@ -157,29 +49,54 @@ def lambda_handler(event, context):
         j = json.loads(body)
         attachments = []
         for record in j["Records"]:
+            match = re.compile('|'.join(MATCH))
+            ignore = re.compile('|'.join(IGNORE))
             if record["eventSource"] in ACCEPT:
-                if record["eventName"] not in WATCHLIST:
+                for record_name in re.finditer(ignore, record["eventName"]):
                     continue
-                print("found IAM change in log " + key)
-                arn = record["userIdentity"]["arn"]
-                event = record["eventName"]
-                color = "warning" if event in WATCHLIST_INFO else "danger"
-                pretext = "`Alert level: Info` \n\n Event details:" if event in WATCHLIST_INFO else "`Alert level: Warning` \n Event details:"
-                attachment = {
-                    "fallback": "New incoming IAM Alert",
-                    "color": "%s" % (color),
-                    "pretext": "%s" % (pretext),
-                    "text": "*User Identity* *`%s`* performed *`%s`*: " % (arn, event),
-                    "fields": [
-                        {   
-                            "value": "*%s*: %s" % (k, v),
-                            "short": False
-                        } 
-                        for k, v in record["requestParameters"].items()
-                    ],
-                    "mrkdwn_in": ["text", "pretext", "color", "fields", "title"]
-                }
-                attachments.append(attachment)
+                for record_name in re.finditer(match, record["eventName"]): 
+                    print("found IAM change in log " + key)
+                    arn = record["userIdentity"]["arn"].split(':')[5]
+                    request_params_json=json.dumps(record["requestParameters"], indent=4, sort_keys=True)
+                    request_params=re.sub('["|[|\]|{|}]', '', re.sub('[\\\\]', '', re.sub('[,]', ', ', re.sub('[\n](\s\s\s)+', '\n', re.sub('[n](\s\s)+', '', request_params_json)))))
+                    event = record["eventName"]
+                    color = "#2eb886"
+                    pretext = "*Event Time*: %s \n\n Event details:" % (record["eventTime"].replace('T', ' ').replace('Z', ' '))
+                    attachment = {
+                        "fallback": "New incoming IAM Alert",
+                        "color": "%s" % (color),
+                        "pretext": "%s" % (pretext),
+                        "text": "*`%s`* --> *`%s`* \n\n " % (arn, event),
+                        "fields": [
+                            {   
+                                "title": "Event Source",
+                                "value": "%s" % (record["eventSource"]),
+                                "short": True
+                            },
+                            {   
+                                "title": "Account ID",
+                                "value": "%s" % (record["userIdentity"]["accountId"]),
+                                "short": True
+                            },
+                            {   
+                                "title": "User",
+                                "value": "%s" % (record["userIdentity"]["principalId"].split(':')[1]),
+                                "short": True
+                            },
+                            {   
+                                "title": "Event Name",
+                                "value": "%s" % (record["eventName"]),
+                                "short": True
+                            },
+                            {   
+                                "title": "Request Parameters",
+                                "value": "%s" % (request_params),
+                                "short": False
+                            }
+                        ],
+                        "mrkdwn_in": ["text", "pretext", "color", "fields", "title"]
+                    }
+                    attachments.append(attachment)
         if attachments:
             if len(attachments) > 20:
                 print("warning! too many attachments")
@@ -217,4 +134,3 @@ def lambda_handler(event, context):
             """
         print(message)
         raise error
-
